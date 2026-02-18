@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Portal System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: #121212;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #e0e0e0;
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            color: #ffffff;
+        }
+
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 60px;
+            opacity: 0.8;
+        }
+
+        .card-container {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .card {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            padding: 50px;
+            border-radius: 24px;
+            width: 320px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: #e0e0e0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            background: #252525;
+            border-color: #3498db;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .icon {
+            font-size: 6rem;
+            margin-bottom: 25px;
+            display: block;
+        }
+
+        .card h2 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: #ffffff;
+        }
+
+        .card span {
+            font-size: 1rem;
+            opacity: 0.7;
+            line-height: 1.5;
+        }
+
+        footer {
+            margin-top: 60px;
+            font-size: 0.9rem;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Hospital Portal System</h1>
+    <p>Select your role to continue</p>
+
+    <div class="card-container">
+        <!-- Patient Card -->
+        <a href="patient-login.html" class="card">
+            <span class="icon">🏥</span>
+            <h2>I am a Patient</h2>
+            <span>Book appointments with top doctors near you</span>
+        </a>
+
+        <!-- Receptionist Card -->
+        <a href="receptionist-login.html" class="card">
+            <span class="icon">👩‍💼</span>
+            <h2>I am a Receptionist</h2>
+            <span>Manage hospital appointments and doctors</span>
+        </a>
+    </div>
+
+    <footer>
+        &copy; 2026 Hospital Portal System
+    </footer>
+</body>
+
+</html>

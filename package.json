@@ -1,0 +1,10 @@
+{
+  "name": "hospital_booking_system",
+  "version": "1.0.0",
+  "description": "Simple Local Hospital Booking System",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "dependencies": {}
+}

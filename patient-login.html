@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Portal - Hospital System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: #121212;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.6s ease-out;
+            color: #e0e0e0;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .container {
+            background: #1e1e1e;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid #333;
+        }
+
+        h1 {
+            color: #ffffff;
+            font-size: 26px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-weight: 600;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            font-size: 16px;
+            background: #2d2d2d;
+            color: white;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #009688;
+            background: #333;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: #009688;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background: #00796b;
+        }
+
+        #booking-section {
+            display: none;
+            margin-top: 30px;
+            border-top: 1px solid #333;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Patient Booking Portal</h1>
+
+        <!-- Step 1: Select Hospital -->
+        <div id="hospital-section">
+            <div class="form-group">
+                <label>Select Hospital</label>
+                <select id="hospital-select" onchange="loadDoctors()">
+                    <option value="">Loading hospitals...</option>
+                </select>
+            </div>
+
+            <div id="booking-section">
+                <div class="form-group">
+                    <label>Your Name</label>
+                    <input type="text" id="patient-name" placeholder="Enter full name">
+                </div>
+
+                <div class="form-group">
+                    <label>Select Doctor at <span id="hospital-name-display"></span></label>
+                    <select id="doctor-select">
+                        <option value="">Choose a doctor...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Preferred Date & Time <span style="color:#888;font-size:13px;">(within next 24
+                            hours)</span></label>
+                    <input type="datetime-local" id="time-select">
+                </div>
+
+                <div class="form-group">
+                    <label>Brief Problem Description</label>
+                    <textarea id="problem" rows="2" placeholder="Fever, headache, etc."></textarea>
+                </div>
+
+                <button class="btn" onclick="bookAppointment()">Confirm Booking</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, collection, getDocs, addDoc } from './firebase-config.js';
+
+        let hospitals = [];
+
+        // Helper: format datetime to local ISO string (YYYY-MM-DDTHH:MM)
+        function toLocalISOString(date) {
+            const pad = n => String(n).padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        }
+
+        // Set the datetime picker limits to now → now+24hrs
+        function setDatetimeLimits() {
+            const now = new Date();
+            const max = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            const input = document.getElementById('time-select');
+            input.min = toLocalISOString(now);
+            input.max = toLocalISOString(max);
+            input.value = toLocalISOString(now); // default to now
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            setDatetimeLimits();
+
+            const select = document.getElementById('hospital-select');
+            try {
+                const querySnapshot = await getDocs(collection(db, "receptionists"));
+                select.innerHTML = '<option value="">-- Choose a Hospital --</option>';
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    hospitals.push({ id: doc.id, ...data });
+                    const option = document.createElement("option");
+                    option.value = doc.id;
+                    option.textContent = data.hospitalName || "Unknown Hospital";
+                    select.appendChild(option);
+                });
+            } catch (e) {
+                console.error("Error loading hospitals", e);
+                select.innerHTML = '<option>Error loading hospitals</option>';
+            }
+        });
+
+        window.loadDoctors = () => {
+            const hospitalId = document.getElementById('hospital-select').value;
+            const bookingSection = document.getElementById('booking-section');
+
+            if (!hospitalId) {
+                bookingSection.style.display = 'none';
+                return;
+            }
+
+            // Find selected hospital data
+            const hospital = hospitals.find(h => h.id === hospitalId);
+            if (hospital) {
+                document.getElementById('hospital-name-display').textContent = hospital.hospitalName;
+
+                const doctorSelect = document.getElementById('doctor-select');
+                doctorSelect.innerHTML = '<option value="">Choose a doctor...</option>';
+
+                if (hospital.doctors && Array.isArray(hospital.doctors)) {
+                    hospital.doctors.forEach(docName => {
+                        const opt = document.createElement('option');
+                        opt.value = docName;
+                        opt.textContent = docName;
+                        doctorSelect.appendChild(opt);
+                    });
+                }
+
+                bookingSection.style.display = 'block';
+            }
+        };
+
+        window.bookAppointment = async () => {
+            const hospitalId = document.getElementById('hospital-select').value;
+            const patientName = document.getElementById('patient-name').value.trim();
+            const doctorName = document.getElementById('doctor-select').value;
+            const timeValue = document.getElementById('time-select').value;
+            const problem = document.getElementById('problem').value;
+
+            if (!hospitalId || !patientName || !doctorName || !timeValue) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            // Validate: must be within next 24 hours
+            const selectedTime = new Date(timeValue);
+            const now = new Date();
+            const max = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+            if (selectedTime < now) {
+                alert("Please select a future time.");
+                return;
+            }
+            if (selectedTime > max) {
+                alert("Booking is only allowed within the next 24 hours.");
+                return;
+            }
+
+            // Format time for display (e.g. "Feb 18, 2026, 06:30 PM")
+            const displayTime = selectedTime.toLocaleString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+
+            try {
+                await addDoc(collection(db, "appointments"), {
+                    hospitalId: hospitalId,
+                    name: patientName,
+                    doctor: doctorName,
+                    time: displayTime,
+                    problem: problem || 'N/A',
+                    status: 'Booked',
+                    bookedAt: new Date().toISOString()
+                });
+
+                alert(`✅ Booked successfully with ${doctorName} at ${displayTime}!`);
+                window.location.reload(); // Reset form
+            } catch (e) {
+                console.error("Error booking", e);
+                alert("Booking failed. Please try again.");
+            }
+        };
+    </script>
+</body>
+
+</html>
