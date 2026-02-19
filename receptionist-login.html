@@ -302,7 +302,7 @@
     </script>
 
     <script type="module">
-        import { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, doc, setDoc } from './firebase-config.js';
+        import { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, doc, setDoc, sendEmailVerification, signOut } from './firebase-config.js';
 
         // Firebase Auth Logic
 
@@ -320,7 +320,14 @@
 
             setLoading(btn, true);
             try {
-                await signInWithEmailAndPassword(auth, email, password);
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                if (!user.emailVerified) {
+                    await signOut(auth);
+                    throw { code: 'auth/email-not-verified' };
+                }
+
                 window.location.href = 'dashboard.html';
             } catch (error) {
                 console.error(error);
@@ -342,6 +349,19 @@
 
             if (!name || !hospitalName || !email || !contact || !password) {
                 showError(errorMsg, "All fields are required");
+                return;
+            }
+
+            // Validation: Gmail only
+            if (!email.toLowerCase().endsWith('@gmail.com')) {
+                showError(errorMsg, "Please use a valid @gmail.com address");
+                return;
+            }
+
+            // Validation: 10-digit phone number
+            const phoneRegex = /^\d{10}$/;
+            if (!phoneRegex.test(contact)) {
+                showError(errorMsg, "Phone number must be exactly 10 digits");
                 return;
             }
 
@@ -371,8 +391,15 @@
 
                 alert(`Hospital Registered Successfully!\nYour Unique Hospital ID is: ${slug}`);
 
-                // 3. Redirect to Dashboard
-                window.location.href = 'dashboard.html';
+                // 3. Send Verification Email & Force Logout
+                await sendEmailVerification(user);
+                await signOut(auth);
+
+                alert(`Registration Successful!\nA verification email has been sent to ${email}.\nPlease verify your email before logging in.`);
+
+                // Switch to login tab
+                document.getElementById('tab-login').click();
+                document.getElementById('login-email').value = email;
             } catch (error) {
                 console.error(error);
                 showError(errorMsg, getErrorMessage(error.code));
@@ -402,6 +429,7 @@
                 case 'auth/weak-password': return "Password should be at least 6 characters";
                 case 'auth/user-not-found': return "No account found with this email";
                 case 'auth/wrong-password': return "Incorrect password";
+                case 'auth/email-not-verified': return "Please verify your email address before logging in.";
                 default: return "An error occurred. Please try again.";
             }
         }

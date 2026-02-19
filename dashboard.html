@@ -324,7 +324,7 @@
 
     <nav>
         <div class="nav-left">
-            <div class="logo">💎 Hospital Portal</div>
+            <div class="logo">Hospital Portal</div>
             <div class="nav-links">
                 <a href="dashboard.html" class="active">Dashboard</a>
                 <a href="appointments.html">Appointments</a>
@@ -366,7 +366,7 @@
         <div class="quick-actions">
             <h2 class="section-title">Quick Actions</h2>
             <div class="action-grid">
-                <a href="patient-login.html" class="action-card" target="_blank">
+                <a href="patient-appointment.html" class="action-card" target="_blank">
                     <div class="action-icon">🔗</div>
                     <div class="action-title">Patient Booking Link</div>
                     <div class="action-desc">Share this link with patients to book appointments</div>
@@ -376,7 +376,7 @@
     </div>
 
     <script type="module">
-        import { auth, db, signOut, onAuthStateChanged, collection, query, where, getDocs, doc, getDoc } from './firebase-config.js';
+        import { auth, db, signOut, onAuthStateChanged, collection, query, where, getDocs, doc, getDoc, deleteDoc } from './firebase-config.js';
 
         let currentUser = null;
 
@@ -386,9 +386,16 @@
         // Auth Check
         onAuthStateChanged(auth, async (user) => {
             if (user) {
+                if (!user.emailVerified) {
+                    await signOut(auth);
+                    alert("Please verify your email address to access the dashboard.");
+                    window.location.href = 'receptionist-login.html';
+                    return;
+                }
                 currentUser = user;
                 try {
                     await loadDashboardData(user);
+                    await cleanupOldAppointments(user.uid);
                     document.getElementById('loader').style.display = 'none';
                 } catch (e) {
                     console.error("Error loading dashboard", e);
@@ -413,7 +420,7 @@
                 // Build shareable patient booking URL using slug hash
                 const base = window.location.href.replace('dashboard.html', '');
                 // Use hash routing (reliable on all servers)
-                const bookingUrl = `${base}patient-login.html#${encodeURIComponent(data.slug || user.uid)}`;
+                const bookingUrl = `${base}patient-appointment.html#${encodeURIComponent(data.slug || user.uid)}`;
                 document.getElementById('booking-link-url').textContent = bookingUrl;
                 document.getElementById('copy-btn').dataset.url = bookingUrl;
             }
@@ -436,6 +443,37 @@
                 }
             });
             document.getElementById('today-appointments').textContent = todayCount;
+        }
+
+        async function cleanupOldAppointments(hospitalId) {
+            // Cleanup appointments older than today (midnight)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            try {
+                const q = query(collection(db, "appointments"), where("hospitalId", "==", hospitalId));
+                const snapshot = await getDocs(q);
+
+                const deletePromises = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    // Use appointmentDate if available, otherwise fallback to bookedAt (legacy support)
+                    const dateStr = data.appointmentDate || data.bookedAt;
+                    const apptDate = new Date(dateStr);
+
+                    // If appointment date is before today's start (i.e. yesterday or earlier)
+                    if (apptDate < today) {
+                        deletePromises.push(deleteDoc(doc.ref));
+                    }
+                });
+
+                if (deletePromises.length > 0) {
+                    await Promise.all(deletePromises);
+                    console.log(`Cleaned up ${deletePromises.length} old appointments`);
+                }
+            } catch (e) {
+                console.error("Error cleaning up old appointments:", e);
+            }
         }
 
         const handleLogout = () => {
