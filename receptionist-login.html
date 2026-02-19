@@ -209,6 +209,81 @@
         .toggle-password:hover {
             color: #3498db;
         }
+
+        /* ── Custom Modal ── */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-box {
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid #333;
+            transform: translateY(20px);
+            transition: transform 0.3s;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        .modal-overlay.active .modal-box {
+            transform: translateY(0);
+        }
+
+        .modal-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            color: #fff;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .modal-msg {
+            font-size: 15px;
+            color: #bbb;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .modal-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .modal-btn:hover {
+            background: #2980b9;
+        }
     </style>
 </head>
 
@@ -273,6 +348,17 @@
             <button class="btn" id="btn-register-action">Create Hospital Account</button>
         </div>
     </div>
+    </div>
+
+    <!-- Custom Modal Structure -->
+    <div class="modal-overlay" id="custom-modal">
+        <div class="modal-box">
+            <div class="modal-icon" id="modal-icon">✨</div>
+            <div class="modal-title" id="modal-title">Success</div>
+            <div class="modal-msg" id="modal-msg">Operation completed successfully.</div>
+            <button class="modal-btn" id="modal-btn">Got it</button>
+        </div>
+    </div>
 
     <script>
         // Tab Switching Logic (Non-Module for Reliability)
@@ -302,7 +388,8 @@
     </script>
 
     <script type="module">
-        import { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, doc, setDoc, sendEmailVerification, signOut } from './firebase-config.js';
+        import { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, doc, setDoc, signOut } from './firebase-config.js';
+        import { sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         // Firebase Auth Logic
 
@@ -325,7 +412,14 @@
 
                 if (!user.emailVerified) {
                     await signOut(auth);
-                    throw { code: 'auth/email-not-verified' };
+                    // Use custom modal for verification error
+                    showModal(
+                        "Verify Email Address",
+                        `We've sent a verification link to <b>${user.email}</b>.<br><br>Please check your inbox (and <b>Spam folder</b>) and click the link to activate your account.`,
+                        false // isSuccess = false (warning style)
+                    );
+                    setLoading(btn, false);
+                    return; // Stop execution
                 }
 
                 window.location.href = 'dashboard.html';
@@ -430,7 +524,7 @@
                 case 'auth/user-not-found': return "No account found with this email";
                 case 'auth/wrong-password': return "Incorrect password";
                 case 'auth/email-not-verified': return "Please verify your email address before logging in.";
-                default: return "An error occurred. Please try again.";
+                default: return "An error occurred: " + code;
             }
         }
 
@@ -463,6 +557,23 @@
                     });
                 }
             });
+        }
+
+        // Modal Logic
+        const modal = document.getElementById('custom-modal');
+        const modalBtn = document.getElementById('modal-btn');
+
+        modalBtn.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        window.showModal = function (title, msg, isSuccess = true) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-msg').innerHTML = msg; // Support HTML for bolding
+            document.getElementById('modal-icon').textContent = isSuccess ? '🎉' : '📧';
+            document.getElementById('modal-btn').style.background = isSuccess ? '#3498db' : '#e67e22'; // Orange for warning
+
+            modal.classList.add('active');
         }
 
         // Attach Event Listeners - Wait for DOM to be fully loaded
