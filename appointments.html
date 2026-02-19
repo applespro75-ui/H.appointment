@@ -150,28 +150,6 @@
             color: #ffffff;
         }
 
-        .add-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: #3498db;
-            color: white;
-            border: none;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.3s;
-        }
-
-        .add-btn:hover {
-            background: #2980b9;
-        }
-
         .appointments-list {
             background: #1e1e1e;
             border-radius: 12px;
@@ -228,7 +206,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: #000926;
+            background: #121212;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -236,12 +214,12 @@
         }
 
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #021233;
-            border-top: 4px solid #0F52BA;
+            width: 36px;
+            height: 36px;
+            border: 3px solid #2d3748;
+            border-top: 3px solid #3498db;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            animation: spin 0.8s linear infinite;
         }
 
         @keyframes spin {
@@ -309,11 +287,6 @@
                 <h3>Total Appointments</h3>
                 <div class="value" id="total-count">0</div>
             </div>
-            <div class="card">
-                <h3>Doctors Active</h3>
-                <div class="value" id="doctor-count">0</div>
-                <button class="add-btn" title="Add New Doctor" id="btn-add-doctor">+</button>
-            </div>
         </div>
 
         <div class="appointments-list">
@@ -335,7 +308,7 @@
     </div>
 
     <script type="module">
-        import { auth, db, signOut, onAuthStateChanged, collection, query, orderBy, onSnapshot, getDocs, doc, getDoc, where, updateDoc, arrayUnion, deleteDoc } from './firebase-config.js';
+        import { auth, db, signOut, onAuthStateChanged, collection, query, onSnapshot, getDocs, doc, getDoc, where, deleteDoc } from './firebase-config.js';
 
         // Auth Check
         onAuthStateChanged(auth, async (user) => {
@@ -379,80 +352,46 @@
         }
 
         function loadAppointments(user) {
-            const q = query(collection(db, "appointments"), where("hospitalId", "==", user.uid), orderBy("bookedAt", "desc"));
+            // Simple where-only query (no orderBy = no composite index needed)
+            const q = query(collection(db, "appointments"), where("hospitalId", "==", user.uid));
 
             onSnapshot(q, (querySnapshot) => {
-                const appointments = [];
-                const doctors = new Set();
                 const tbody = document.getElementById('appointments-body');
                 tbody.innerHTML = '';
 
                 if (querySnapshot.empty) {
-                    // Show empty state message
                     tbody.innerHTML = `
-                        <tr>
-                            <td colspan="5">
-                                <div class="empty-state">
-                                    <div class="empty-state-icon">📅</div>
-                                    <h3>No Appointments Yet</h3>
-                                    <p>There are currently no appointments scheduled. They will appear here once patients book appointments.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                } else {
-                    querySnapshot.forEach((doc) => {
-                        const data = doc.data();
-                        appointments.push(data);
-                        doctors.add(data.doctor);
-
-                        const row = `
-                            <tr>
-                                <td>${data.time}</td>
-                                <td>${data.name}</td>
-                                <td>${data.doctor}</td>
-                                <td>${data.problem}</td>
-                                <td><span class="status-badge status-booked">${data.status}</span></td>
-                            </tr>
-                        `;
-                        tbody.innerHTML += row;
-                    });
+                        <tr><td colspan="5">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📅</div>
+                                <h3>No Appointments Yet</h3>
+                                <p>Appointments will appear here once patients book.</p>
+                            </div>
+                        </td></tr>`;
+                    document.getElementById('total-count').textContent = '0';
+                    return;
                 }
 
-                document.getElementById('total-count').textContent = appointments.length;
-                updateDoctorCount(user.uid);
+                // Sort newest first client-side (no Firestore index required)
+                const docs = querySnapshot.docs.sort((a, b) =>
+                    b.data().bookedAt.localeCompare(a.data().bookedAt)
+                );
+
+                docs.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${data.time}</td>
+                            <td>${data.name}</td>
+                            <td>${data.doctor}</td>
+                            <td>${data.problem}</td>
+                            <td><span class="status-badge status-booked">${data.status}</span></td>
+                        </tr>`;
+                });
+
+                document.getElementById('total-count').textContent = docs.length;
             });
         }
-
-        async function updateDoctorCount(uid) {
-            const docSnap = await getDoc(doc(db, "receptionists", uid));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                if (data.doctors) {
-                    document.getElementById('doctor-count').textContent = data.doctors.length;
-                }
-            }
-        }
-
-        const addNewDoctor = async () => {
-            const name = prompt("Enter the new Doctor's name (e.g. Dr. House):");
-            if (!name) return;
-
-            const user = auth.currentUser;
-            if (!user) return;
-
-            try {
-                const docRef = doc(db, "receptionists", user.uid);
-                await updateDoc(docRef, {
-                    doctors: arrayUnion(name)
-                });
-                alert("Doctor added successfully!");
-                updateDoctorCount(user.uid);
-            } catch (e) {
-                console.error("Error adding doctor", e);
-                alert("Failed to add doctor.");
-            }
-        };
 
         const handleLogout = () => {
             signOut(auth).then(() => {
@@ -464,7 +403,6 @@
         document.getElementById('date-display').textContent = new Date().toLocaleDateString('en-US', options);
 
         // Attach Event Listeners
-        document.getElementById('btn-add-doctor').addEventListener('click', addNewDoctor);
         document.getElementById('btn-logout').addEventListener('click', handleLogout);
     </script>
 </body>
