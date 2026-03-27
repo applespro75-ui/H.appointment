@@ -65,15 +65,6 @@ HMS/
    - Enable Email/Password authentication in Firebase Console
    - Set up Firestore database rules
 
-3. **Run the project**
-   
-   Using the built-in script:
-   ```bash
-   npm start
-   ```
-   
-   Or open `index.html` directly in a browser (some features may require a server)
-
 ## 📱 Usage
 
 ### For Receptionists
@@ -88,11 +79,7 @@ HMS/
 2. Fill in appointment details
 3. Submit the form to book an appointment
 4. Receive confirmation
-
-## ⚙️ Configuration
-
-### Environment Variables
-No environment variables needed - all configuration is in `firebase-config.js`
+`
 
 ### Customization
 - Update hospital information in receptionist registration
@@ -106,11 +93,5 @@ This project is open source and available for educational purposes.
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!
-
-## 📧 Support
-
-For support, email the repository owner or open an issue.
-
----
 
 **Built with ❤️ using Firebase and Modern Web Technologies**
