@@ -28,7 +28,7 @@ A modern, web-based hospital management and appointment booking system designed 
 
 - **Frontend:** HTML5, CSS3, Vanilla JavaScript
 - **Backend:** Firebase (Authentication + Firestore Database)
-- **Hosting:** Firebase Hosting / Any static hosting
+- **Hosting:** Github Pages
 - **Dependencies:** Firebase SDK 10.7.1
 
 ## 📁 Project Structure
